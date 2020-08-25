@@ -32,12 +32,22 @@ class UserResponse {
 @Resolver()
 export class UserResolver {
     @Query(() => [User], {nullable: true})
-    users (
+    async users (
         @Ctx() {em}: MyContext
         ): Promise<User[] | null> {
-            return em.find(User, {});
+            return await em.find(User, {});
         }
         
+    @Query(() => User, {nullable: true})
+    async me (
+        @Ctx() {req, em}: MyContext
+    ): Promise<User | null> {
+        if(!req.session.userId)
+            return null;
+            
+        const user = await em.findOne(User, { id: req.session. userId })
+        return user;
+    }
 
     @Mutation(() => UserResponse)
     async register(
@@ -61,7 +71,7 @@ export class UserResolver {
             }
         }
         const hashedPassword = await argon2.hash(options.password);
-        const user = em.create(User, {username: options.username, password: hashedPassword});
+        const user = await em.create(User, {username: options.username, password: hashedPassword});
         try {
         await em.persistAndFlush(user);
         } catch (err) {
@@ -81,7 +91,7 @@ export class UserResolver {
     @Mutation(() => UserResponse)
     async login(
         @Arg('options') options: UsernamePasswordInput,
-        @Ctx() {em}: MyContext
+        @Ctx() {em, req}: MyContext
     ) {
         const user = await em.findOne(User, {username: options.username}); 
         // const driver = em.getDriver();
@@ -104,6 +114,8 @@ export class UserResolver {
                 }]
             }
         }
+
+        req.session.userId = user.id;
 
         return {
             user
