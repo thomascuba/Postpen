@@ -44,7 +44,7 @@ export class UserResolver {
     ): Promise<User | null> {
         if(!req.session.userId)
             return null;
-            
+
         const user = await em.findOne(User, { id: req.session. userId })
         return user;
     }
@@ -52,7 +52,7 @@ export class UserResolver {
     @Mutation(() => UserResponse)
     async register(
         @Arg('options') options: UsernamePasswordInput,
-        @Ctx() {em}: MyContext
+        @Ctx() {req, em}: MyContext
     ): Promise<UserResponse> {
         if(options.username.length <= 2) {
             return {
@@ -85,6 +85,10 @@ export class UserResolver {
                 }
             }
         }
+        
+        //login automatically after registering
+        req.session.userId = user.id;
+
         return { user };
     }
 
